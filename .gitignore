@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Portable publish profile contains only local build settings.
+!ll_launcher/Properties/PublishProfiles/Portable.pubxml
+/AGENTS.md
