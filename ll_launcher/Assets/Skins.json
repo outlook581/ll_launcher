@@ -1,0 +1,117 @@
+[
+  {
+    "id": "midnight",
+    "name": "深海蓝",
+    "colors": {
+      "Top": "#16243A",
+      "Bottom": "#0D192D",
+      "Sidebar": "#101C30",
+      "Surface": "#1D2A40",
+      "Raised": "#263850",
+      "Hover": "#30435E",
+      "Border": "#455975",
+      "Divider": "#2A3A51",
+      "Text": "#EDF2FB",
+      "Muted": "#A6B6CC",
+      "Accent": "#78B4FF",
+      "Selected": "#214A80",
+      "Action": "#225BB2",
+      "OnAction": "#FFFFFF",
+      "Thumb": "#657C99",
+      "Favorite": "#FFD260",
+      "Error": "#FFA59C"
+    }
+  },
+  {
+    "id": "pine",
+    "name": "松针绿",
+    "colors": {
+      "Top": "#17382F",
+      "Bottom": "#102821",
+      "Sidebar": "#112E26",
+      "Surface": "#204036",
+      "Raised": "#294D40",
+      "Hover": "#335A4C",
+      "Border": "#486C5B",
+      "Divider": "#2A4A3E",
+      "Text": "#EDF8EF",
+      "Muted": "#AAC6B7",
+      "Accent": "#82D9B4",
+      "Selected": "#295D46",
+      "Action": "#286447",
+      "OnAction": "#FFFFFF",
+      "Thumb": "#709481",
+      "Favorite": "#F2CF74",
+      "Error": "#FFAF9E"
+    }
+  },
+  {
+    "id": "plum",
+    "name": "暮山紫",
+    "colors": {
+      "Top": "#35253E",
+      "Bottom": "#23192F",
+      "Sidebar": "#2B1C34",
+      "Surface": "#403047",
+      "Raised": "#513952",
+      "Hover": "#624463",
+      "Border": "#78587B",
+      "Divider": "#4A3653",
+      "Text": "#F9EFF8",
+      "Muted": "#CEB7D2",
+      "Accent": "#E6ABED",
+      "Selected": "#633C68",
+      "Action": "#80478A",
+      "OnAction": "#FFFFFF",
+      "Thumb": "#967A9C",
+      "Favorite": "#F3CB82",
+      "Error": "#FFB1AF"
+    }
+  },
+  {
+    "id": "sand",
+    "name": "暖砂杏",
+    "colors": {
+      "Top": "#F8EFDE",
+      "Bottom": "#EFE3CE",
+      "Sidebar": "#F1E5D0",
+      "Surface": "#FFF8EA",
+      "Raised": "#EADAC3",
+      "Hover": "#E5D0B1",
+      "Border": "#B9A48B",
+      "Divider": "#D5C3A7",
+      "Text": "#3A3028",
+      "Muted": "#6C5948",
+      "Accent": "#8D4B24",
+      "Selected": "#E7C49D",
+      "Action": "#884622",
+      "OnAction": "#FFFCF5",
+      "Thumb": "#9A7B60",
+      "Favorite": "#855700",
+      "Error": "#A52E28"
+    }
+  },
+  {
+    "id": "cloud",
+    "name": "云瓷白",
+    "colors": {
+      "Top": "#F5F8FC",
+      "Bottom": "#E7EDF4",
+      "Sidebar": "#ECF1F7",
+      "Surface": "#FFFFFF",
+      "Raised": "#E4EBF3",
+      "Hover": "#D7E4F0",
+      "Border": "#A8B8CA",
+      "Divider": "#CFD9E5",
+      "Text": "#21334C",
+      "Muted": "#516580",
+      "Accent": "#235EA0",
+      "Selected": "#C5DAF0",
+      "Action": "#235B99",
+      "OnAction": "#FFFFFF",
+      "Thumb": "#7D91AB",
+      "Favorite": "#805900",
+      "Error": "#A1323F"
+    }
+  }
+]

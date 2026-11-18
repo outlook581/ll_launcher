@@ -1,0 +1,17 @@
+栖点 (Qidian Launcher)
+Copyright © 2026 栖点项目作者
+https://github.com/outlook581/ll_launcher
+
+栖点原创代码按 Apache License, Version 2.0 授权，全文见 LICENSE。
+以下路径均相对于 Windows x64 便携版的解压目录。
+
+界面中的操作和分组图标使用 Microsoft Fluent UI System Icons。图标的 MIT 许可证和来源见
+Assets/Icons/LICENSE 和 Assets/Icons/NOTICE.md。
+
+Qidian.exe 使用 .NET apphost 模板（Copyright (c) .NET Foundation and Contributors）。
+该模板与 Microsoft.Data.Sqlite 的 MIT 许可全文见
+Runtime/Licenses/Microsoft.Data.Sqlite-LICENSE.txt。微软的逐文件许可说明见
+https://github.com/dotnet/core/blob/main/license-information-windows.md
+
+Microsoft.Data.Sqlite、SQLitePCLRaw 和 SQLite 的许可说明见
+Runtime/Licenses/SQLite-NOTICES.txt。
