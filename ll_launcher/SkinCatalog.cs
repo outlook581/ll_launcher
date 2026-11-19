@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace ll_launcher;
 
-internal sealed record Skin(string Id, string Name, ResourceDictionary Resources)
+internal sealed record Skin(string Id, string Name, string Style, ResourceDictionary Resources)
 {
     public Brush Swatch => (Brush)Resources["AccentBrush"];
 }
@@ -29,8 +29,11 @@ internal sealed class SkinCatalog
         {
             var id = entry.GetProperty("id").GetString();
             var name = entry.GetProperty("name").GetString();
+            var style = entry.TryGetProperty("style", out var styleProperty) ? styleProperty.GetString() : "其他";
             if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(name) || skins.Any(s => s.Id == id))
                 throw new InvalidDataException("皮肤名称或标识无效。");
+            if (string.IsNullOrWhiteSpace(style))
+                throw new InvalidDataException($"皮肤「{name}」的风格名称无效。");
             var palette = new ResourceDictionary();
             var colors = entry.GetProperty("colors");
             foreach (var role in Roles)
@@ -45,7 +48,7 @@ internal sealed class SkinCatalog
                 palette.Add(role + "Brush", brush);
                 if (role is "Top" or "Bottom") palette.Add(role + "Color", color);
             }
-            skins.Add(new(id, name, palette));
+            skins.Add(new(id, name, style, palette));
         }
         if (skins.Count == 0) throw new InvalidDataException("未找到可用皮肤。");
         return new(skins);

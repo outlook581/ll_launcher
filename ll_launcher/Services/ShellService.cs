@@ -35,6 +35,55 @@ public static class ShellService
         using var process = Process.Start(startInfo);
     }
 
+    internal static string? GetFileSystemTarget(string target)
+    {
+        var path = Environment.ExpandEnvironmentVariables(target.Trim());
+        if (Path.IsPathFullyQualified(path)) return path;
+        if (path.StartsWith("::{", StringComparison.Ordinal)) return null;
+        if (Uri.TryCreate(path, UriKind.Absolute, out var uri))
+            return uri.IsFile ? uri.LocalPath : null;
+        return path;
+    }
+
+    private static string ResolveSourcePath(string target, string workingDirectory)
+    {
+        var path = Path.GetFullPath(ResolveExecutablePath(target, workingDirectory));
+        if (!Path.Exists(path))
+        {
+            // The Shell accepts bare program names such as "notepad" without the .exe suffix.
+            var executable = Path.GetFileName(target) == target && !Path.HasExtension(target)
+                ? ResolveExecutablePath(target + ".exe", workingDirectory) : null;
+            if (!File.Exists(executable))
+                throw new FileNotFoundException($"找不到源文件或文件夹：{path}", path);
+            path = Path.GetFullPath(executable);
+        }
+
+        return path;
+    }
+
+    internal static void ShowProperties(IntPtr owner, string target, string workingDirectory)
+    {
+        var path = ResolveSourcePath(target, workingDirectory);
+        const uint ShopFilePath = 2;
+        if (!SHObjectProperties(owner, ShopFilePath, path, null))
+            throw new InvalidOperationException($"Windows 无法显示该项目的属性：{path}");
+    }
+
+    internal static void OpenFileLocation(string target, string workingDirectory)
+    {
+        var path = ResolveSourcePath(target, workingDirectory);
+        Marshal.ThrowExceptionForHR(SHParseDisplayName(path, IntPtr.Zero, out var item, 0, out _));
+        try
+        {
+            // A zero selection count asks Explorer to open the item's parent and select the item itself.
+            Marshal.ThrowExceptionForHR(SHOpenFolderAndSelectItems(item, 0, IntPtr.Zero, 0));
+        }
+        finally
+        {
+            Marshal.FreeCoTaskMem(item);
+        }
+    }
+
     public static ImageSource? GetIcon(string target, int size = 48)
     {
         if (string.IsNullOrWhiteSpace(target)) return null;
@@ -117,10 +166,13 @@ public static class ShellService
         }
     }
 
-    private static string ResolveExecutablePath(string target)
+    private static string ResolveExecutablePath(string target, string workingDirectory = "")
     {
-        if (File.Exists(target) || Directory.Exists(target) || target.IndexOfAny(new[] { '\\', '/', ':' }) >= 0) return target;
-        // ShellExecute supports bare executable names. Resolve the same common locations for their display icons.
+        var localPath = !string.IsNullOrWhiteSpace(workingDirectory) && !Path.IsPathFullyQualified(target)
+            ? Path.GetFullPath(target, Path.GetFullPath(Environment.ExpandEnvironmentVariables(workingDirectory)))
+            : target;
+        if (target.IndexOfAny(new[] { '\\', '/', ':' }) >= 0 || File.Exists(localPath) || Directory.Exists(localPath)) return localPath;
+        // ShellExecute also finds bare executable names in system directories, PATH and App Paths.
         foreach (string directory in new[] { Environment.GetFolderPath(Environment.SpecialFolder.Windows), Environment.GetFolderPath(Environment.SpecialFolder.System) })
         {
             string candidate = Path.Combine(directory, target);
@@ -152,7 +204,7 @@ public static class ShellService
                 catch (Exception error) when (error is UnauthorizedAccessException or System.Security.SecurityException or IOException) { }
             }
         }
-        return target;
+        return localPath;
     }
 
     private static ImageSource? ExtractShellItemIcon(string path, int size)
@@ -191,6 +243,10 @@ public static class ShellService
     private static extern int SHCreateItemFromParsingName(string path, IntPtr bindContext, ref Guid interfaceId,
         [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory? imageFactory);
 
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SHObjectProperties(IntPtr owner, uint objectType, string path, string? propertyPage);
+
     [DllImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(IntPtr value);
@@ -211,8 +267,11 @@ public static class ShellService
     [DllImport("shell32.dll", EntryPoint = "SHGetFileInfoW")]
     private static extern IntPtr SHGetFileInfoPidl(IntPtr pidl, uint attributes, ref ShellFileInfo info, uint size, uint flags);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int SHParseDisplayName(string name, IntPtr bindContext, out IntPtr pidl, uint attributesIn, out uint attributesOut);
+
+    [DllImport("shell32.dll", ExactSpelling = true)]
+    private static extern int SHOpenFolderAndSelectItems(IntPtr folder, uint count, IntPtr children, uint flags);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using ll_launcher.Data;
@@ -485,6 +486,12 @@ public partial class MainWindow : Window
         }
 
         menu.Items.Add(move);
+        if (ShellService.GetFileSystemTarget(v.Item.Target) is { } source)
+        {
+            AddMenu(menu, "打开文件所在位置", () => Guard(() => ShellService.OpenFileLocation(source, v.Item.WorkingDirectory)));
+            AddMenu(menu, "属性", () => Guard(() =>
+                ShellService.ShowProperties(new WindowInteropHelper(this).Handle, source, v.Item.WorkingDirectory)));
+        }
         menu.Items.Add(new Separator());
         AddMenu(menu, "移除启动项", () => Guard(() =>
         {
@@ -540,19 +547,24 @@ public partial class MainWindow : Window
         AddMenu(menu, "新建分组", () => EditGroup(null));
         menu.Items.Add(new Separator());
         var appearance = new MenuItem { Header = "皮肤设置" };
-        foreach (var skin in _skins.Skins)
+        foreach (var group in _skins.Skins.GroupBy(skin => skin.Style))
         {
-            var header = new StackPanel { Orientation = Orientation.Horizontal };
-            header.Children.Add(new System.Windows.Shapes.Ellipse { Width = 11, Height = 11, Fill = skin.Swatch, Margin = new Thickness(0, 0, 8, 0) });
-            header.Children.Add(new TextBlock { Text = skin.Name });
-            var choice = new MenuItem { Header = header, IsCheckable = true, IsChecked = skin == _skins.Current };
-            System.Windows.Automation.AutomationProperties.SetName(choice, skin.Name);
-            choice.Click += (_, _) => Guard(() =>
+            var styleMenu = new MenuItem { Header = group.Key };
+            foreach (var skin in group)
             {
-                _repo.SetSetting("ui.skin", skin.Id);
-                _skins.Apply(skin.Id);
-            });
-            appearance.Items.Add(choice);
+                var header = new StackPanel { Orientation = Orientation.Horizontal };
+                header.Children.Add(new System.Windows.Shapes.Ellipse { Width = 11, Height = 11, Fill = skin.Swatch, Margin = new Thickness(0, 0, 8, 0) });
+                header.Children.Add(new TextBlock { Text = skin.Name });
+                var choice = new MenuItem { Header = header, IsCheckable = true, IsChecked = skin == _skins.Current };
+                System.Windows.Automation.AutomationProperties.SetName(choice, skin.Name);
+                choice.Click += (_, _) => Guard(() =>
+                {
+                    _repo.SetSetting("ui.skin", skin.Id);
+                    _skins.Apply(skin.Id);
+                });
+                styleMenu.Items.Add(choice);
+            }
+            appearance.Items.Add(styleMenu);
         }
         menu.Items.Add(appearance);
         AddMenu(menu, "立即备份", Backup);
