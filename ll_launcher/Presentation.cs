@@ -1,10 +1,13 @@
+using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using ll_launcher.Models;
 using ll_launcher.Data;
+using ll_launcher.Native;
 using ll_launcher.Services;
 
 namespace ll_launcher;
@@ -15,20 +18,86 @@ public sealed class IconKeyConverter : IValueConverter
 }
 
 public sealed record GroupView(long Id, string Name, string IconKey, Visibility LabelVisibility);
-public sealed class ItemView(LauncherItem item, double rowWidth, LauncherRepository repository)
+public sealed class ItemView : INotifyPropertyChanged
 {
-    public LauncherItem Item { get; } = item;
+    private readonly LauncherRepository _repository;
+    private readonly Lazy<string> _description;
+    private ImageSource? _websiteIcon;
+    private bool _websiteIconRequested;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public ItemView(LauncherItem item, LauncherRepository repository)
+    {
+        Item = item;
+        _repository = repository;
+        _description = new Lazy<string>(DescribeTarget);
+    }
+
+    public LauncherItem Item { get; }
     public string Name => Item.Name;
-    public string Target => Item.Kind == ShortcutSnapshot.Kind ? "已保存的快捷方式 · " + Path.GetFileName(Item.Target) : Item.Target;
+    public string Target => _description.Value;
     public bool IsFavorite => Item.IsFavorite;
     public string StarKey => IsFavorite ? "starFilled" : "star";
-    public double RowWidth { get; } = rowWidth;
-    public string FallbackKey => Item.Kind == "url" ? "link" : Item.Target == "ms-settings:" ? "wrench" : Item.Kind == "folder" ? "folder" : "file";
+    public string FallbackKey => IsWebsite ? "link" : Item.Target == "ms-settings:" ? "wrench" : Item.Kind == "folder" ? "folder" : "file";
     public Visibility FallbackVisibility => Icon == null ? Visibility.Visible : Visibility.Collapsed;
-    public ImageSource? Icon => ShellService.GetIcon(repository.LaunchTarget(Item), 48);
+    public ImageSource? Icon
+    {
+        get
+        {
+            if (!_websiteIconRequested && IsWebsite)
+            {
+                _websiteIconRequested = true;
+                _ = LoadWebsiteIconAsync();
+            }
+            return _websiteIcon ?? ShellService.GetIcon(_repository.LaunchTarget(Item), 48);
+        }
+    }
+
+    private bool IsWebsite => Item.Kind == "url" || IsSavedShortcut(".url");
+    private bool IsSavedShortcut(string extension) => Item.Kind == ShortcutSnapshot.Kind &&
+        Environment.ExpandEnvironmentVariables(Item.Target).EndsWith(extension, StringComparison.OrdinalIgnoreCase);
+
+    private async Task LoadWebsiteIconAsync()
+    {
+        var address = Item.Kind == ShortcutSnapshot.Kind ? await Task.Run(() => Target) : Item.Target;
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")) return;
+        if (await WebsiteIconService.GetIconAsync(uri) is not { } icon) return;
+        _websiteIcon = icon;
+        PropertyChanged?.Invoke(this, new(nameof(Icon)));
+        PropertyChanged?.Invoke(this, new(nameof(FallbackVisibility)));
+    }
+
+    private string? ReadShortcutTarget() => ShellShortcut.GetFileSystemTarget(_repository.LaunchTarget(Item));
+
+    private string DescribeTarget()
+    {
+        if (Item.Kind != ShortcutSnapshot.Kind) return Item.Target;
+        var shortcutName = "已保存的快捷方式 · " + Path.GetFileName(Item.Target);
+        try
+        {
+            var target = IsSavedShortcut(".url")
+                ? ShortcutSnapshot.ReadInternetTarget(_repository.LaunchTarget(Item))
+                : ReadShortcutTarget();
+            return target ?? shortcutName;
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException
+            or COMException or Microsoft.Data.Sqlite.SqliteException or ObjectDisposedException)
+        {
+            return shortcutName;
+        }
+    }
+
+    internal string FileActionTarget(string source)
+    {
+        if (!IsSavedShortcut(".lnk")) return source;
+        if (ReadShortcutTarget() is { } target) return target;
+        if (File.Exists(source)) return source;
+        throw new FileNotFoundException("找不到快捷方式指向的文件或文件夹，原快捷方式也已移除。", source);
+    }
 }
 
-public sealed record ItemRow(List<ItemView> Items, int Columns, DataTemplate Template);
+public sealed record ItemRow(List<ItemView> Items, int Columns, DataTemplate Template, double RowWidth);
 internal sealed partial class EditDialog : Window
 {
     private readonly Dictionary<string, TextBox> _inputs = new();

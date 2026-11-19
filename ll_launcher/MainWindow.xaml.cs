@@ -20,7 +20,7 @@ public partial class MainWindow : Window
     private readonly SkinCatalog _skins;
     private DesktopIntegration? _desktop;
     private List<LauncherGroup> _groups = [];
-    private List<LauncherItem> _items = [];
+    private List<ItemView> _items = [];
     private long _selectedGroup;
     private bool _collapsed, _listMode, _ready, _allowClose;
     private readonly DispatcherTimer _saveTimer = new()
@@ -128,7 +128,7 @@ public partial class MainWindow : Window
     private void Reload()
     {
         _groups = _repo.GetGroups();
-        _items = _repo.GetItems();
+        _items = _repo.GetItems().Select(i => new ItemView(i, _repo)).ToList();
         if (_selectedGroup < -1 || (_selectedGroup > 0 && !_groups.Any(g => g.Id == _selectedGroup)))
             _selectedGroup = 0;
         var visibility = _collapsed ? Visibility.Collapsed : Visibility.Visible;
@@ -149,13 +149,13 @@ public partial class MainWindow : Window
             return;
         var query = SearchBox.Text.Trim();
         SearchHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        IEnumerable<LauncherItem> source = _items;
+        IEnumerable<ItemView> source = _items;
         if (query.Length > 0)
             source = source.Where(i => i.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
         else if (_selectedGroup == -1)
             source = source.Where(i => i.IsFavorite);
         else if (_selectedGroup > 0)
-            source = source.Where(i => i.GroupId == _selectedGroup);
+            source = source.Where(i => i.Item.GroupId == _selectedGroup);
         var ordered = source.ToList(); // GetItems returns items in group and item display order.
         int gridColumns = Math.Max(2, (int)((ContentArea.ActualWidth > 0 ? ContentArea.ActualWidth : 250) / CardColumnWidth));
         var columns = _listMode ? 1 : gridColumns;
@@ -171,12 +171,13 @@ public partial class MainWindow : Window
         ListModeButton.SetResourceReference(BackgroundProperty, _listMode ? "SelectedBrush" : "ClearBrush");
     }
 
-    private List<ItemRow> MakeRows(List<LauncherItem> entries, int columns, bool list)
+    private List<ItemRow> MakeRows(List<ItemView> entries, int columns, bool list)
     {
         var template = (DataTemplate)FindResource(list ? "ListCard" : "GridCard");
         var rows = new List<ItemRow>();
+        var rowWidth = Math.Max(100, ContentArea.ActualWidth - 40);
         for (int n = 0; n < entries.Count; n += columns)
-            rows.Add(new(entries.Skip(n).Take(columns).Select(i => new ItemView(i, Math.Max(100, ContentArea.ActualWidth - 40), _repo)).ToList(), columns, template));
+            rows.Add(new(entries.Skip(n).Take(columns).ToList(), columns, template, rowWidth));
         return rows;
     }
 
@@ -313,7 +314,7 @@ public partial class MainWindow : Window
         int unavailable = 0;
         int captured = 0;
         string? firstError = null;
-        foreach (var item in _items.Where(i => i.Kind is not (ShortcutSnapshot.Kind or "folder") && ShortcutSnapshot.IsLinkPath(i.Target)).ToArray())
+        foreach (var item in _items.Select(v => v.Item).Where(i => i.Kind is not (ShortcutSnapshot.Kind or "folder") && ShortcutSnapshot.IsLinkPath(i.Target)).ToArray())
         {
             try
             {
@@ -488,9 +489,9 @@ public partial class MainWindow : Window
         menu.Items.Add(move);
         if (ShellService.GetFileSystemTarget(v.Item.Target) is { } source)
         {
-            AddMenu(menu, "打开文件所在位置", () => Guard(() => ShellService.OpenFileLocation(source, v.Item.WorkingDirectory)));
+            AddMenu(menu, "打开文件所在位置", () => Guard(() => ShellService.OpenFileLocation(v.FileActionTarget(source), v.Item.WorkingDirectory)));
             AddMenu(menu, "属性", () => Guard(() =>
-                ShellService.ShowProperties(new WindowInteropHelper(this).Handle, source, v.Item.WorkingDirectory)));
+                ShellService.ShowProperties(new WindowInteropHelper(this).Handle, v.FileActionTarget(source), v.Item.WorkingDirectory)));
         }
         menu.Items.Add(new Separator());
         AddMenu(menu, "移除启动项", () => Guard(() =>

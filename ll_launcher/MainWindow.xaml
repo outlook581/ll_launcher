@@ -38,7 +38,7 @@
       </Style.Triggers>
     </Style>
     <DataTemplate x:Key="GridCard">
-      <Grid Margin="3" Height="78" ToolTip="{Binding Target}" PreviewMouseLeftButtonDown="Item_MouseDown" MouseRightButtonUp="Item_Context">
+      <Grid Margin="3" Height="78" ToolTip="{Binding Target, IsAsync=True}" PreviewMouseLeftButtonDown="Item_MouseDown" MouseRightButtonUp="Item_Context">
         <Button Style="{StaticResource CardButton}" Click="Launch_Click" AutomationProperties.Name="{Binding Name}">
           <StackPanel VerticalAlignment="Center">
             <Grid Width="32" Height="32" Margin="0,3,0,7">
@@ -54,9 +54,9 @@
       </Grid>
     </DataTemplate>
     <DataTemplate x:Key="ListCard">
-      <Grid Margin="3,2" Height="44" ToolTip="{Binding Target}" PreviewMouseLeftButtonDown="Item_MouseDown" MouseRightButtonUp="Item_Context">
+      <Grid Margin="3,2" Height="44" ToolTip="{Binding Target, IsAsync=True}" PreviewMouseLeftButtonDown="Item_MouseDown" MouseRightButtonUp="Item_Context">
         <Button Style="{StaticResource CardButton}" Click="Launch_Click" HorizontalContentAlignment="Stretch" AutomationProperties.Name="{Binding Name}">
-          <Grid Width="{Binding RowWidth}">
+          <Grid Width="{Binding DataContext.RowWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="33" />
               <ColumnDefinition Width="*" />
@@ -68,7 +68,7 @@
             </Grid>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" />
-              <TextBlock Text="{Binding Target}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+              <TextBlock Text="{Binding Target, IsAsync=True}" Foreground="{DynamicResource MutedBrush}" FontSize="10" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
             </StackPanel>
           </Grid>
         </Button>

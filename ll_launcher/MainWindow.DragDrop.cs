@@ -196,7 +196,7 @@ public partial class MainWindow
     private void CommitInsertion(DragEntry entry, Insertion slot)
     {
         var ids = entry.IsGroup ? _groups.Select(g => g.Id).ToList() :
-            _items.Where(i => i.GroupId == _selectedGroup).OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+            _items.Select(v => v.Item).Where(i => i.GroupId == _selectedGroup).OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
         int from = ids.IndexOf(entry.Id), anchor = ids.IndexOf(slot.AnchorId);
         if (from < 0 || anchor < 0) return;
         int boundary = anchor + (slot.After ? 1 : 0);

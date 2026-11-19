@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using Microsoft.Data.Sqlite;
 using ll_launcher.Data;
 using ll_launcher.Models;
+using ll_launcher.Native;
 
 if (args is ["--crash-write", var database])
 {
@@ -27,7 +29,7 @@ if (args is ["--crash-write", var database])
 var testRoot = Path.Combine(Path.GetTempPath(), "ll-launcher-storage-tests-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(testRoot);
 int passed = 0;
-var tests = new (string Name, Action<string> Test)[]
+var tests = new List<(string Name, Action<string> Test)>
 {
     ("CRUD, parameters, favorites and persistence", Crud),
     ("Group and item ordering; delete-group migration", OrderingAndMigration),
@@ -38,10 +40,13 @@ var tests = new (string Name, Action<string> Test)[]
     ("Interrupted restore resumes before opening the live database", RecoveryInterruptionTests.Resume),
     ("Schema initialization backs up existing database", UpgradeBackup),
     ("Portable shortcut survives removal, cache loss and backup restore", ShortcutBackup),
+    ("Internet shortcuts accept Windows INI quoting", QuotedInternetShortcut),
     ("Version one database and backup upgrade without changing groups", LegacyBackup),
     ("Corrupt, empty, unknown and newer databases are preserved", PreserveInvalidFiles),
     ("Process termination recovers an uncommitted transaction", CrashRecovery)
 };
+if (OperatingSystem.IsWindows())
+    tests.Add(("Saved Windows shortcut resolves its target after the original is deleted", SavedShortcutTarget));
 foreach (var (name, test) in tests)
 {
     string directory = Path.Combine(testRoot, passed.ToString("D2"));
@@ -279,7 +284,9 @@ static void UpgradeBackup(string directory)
 static void ShortcutBackup(string directory)
 {
     var source = Path.Combine(directory, "文档.url");
-    File.WriteAllText(source, "[InternetShortcut]\r\nURL=https://example.com/\r\n");
+    const string address = "https://example.com/资源?topic=a=b&view=all#资料";
+    File.WriteAllText(source, $"[Other]\r\nURL=https://example.com/wrong\r\n[InternetShortcut]\r\nURL={address}\r\n",
+        System.Text.Encoding.Unicode);
     const string zone = "[ZoneTransfer]\r\nZoneId=3\r\n";
     if (OperatingSystem.IsWindows()) File.WriteAllText(source + ":Zone.Identifier", zone);
     var contents = File.ReadAllBytes(source);
@@ -292,6 +299,7 @@ static void ShortcutBackup(string directory)
         item = repo.GetItems().Single();
         var cached = repo.LaunchTarget(item);
         Sequence(contents, File.ReadAllBytes(cached));
+        Equal(address, ShortcutSnapshot.ReadInternetTarget(cached));
         File.Delete(cached);
         Sequence(contents, File.ReadAllBytes(repo.LaunchTarget(item)));
         repo.SaveItem(item with { Name = "网页" });
@@ -306,9 +314,54 @@ static void ShortcutBackup(string directory)
     var path = reopened.LaunchTarget(saved);
     Equal(true, path.StartsWith(restored + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
     Sequence(contents, File.ReadAllBytes(path));
+    Equal(address, ShortcutSnapshot.ReadInternetTarget(path));
     if (OperatingSystem.IsWindows()) Equal(zone, File.ReadAllText(path + ":Zone.Identifier"));
     reopened.DeleteItem(saved.Id);
     Equal(false, File.Exists(path));
+}
+
+static void QuotedInternetShortcut(string directory)
+{
+    string shortcut = Path.Combine(directory, "资源平台.url");
+    const string address = "https://example.com/资源?topic=a=b#资料";
+    foreach (char quote in new[] { '"', '\'' })
+    {
+        File.WriteAllText(shortcut, $"[InternetShortcut]\r\nURL={quote}{address}{quote}\r\n");
+        Equal(address, ShortcutSnapshot.ReadInternetTarget(shortcut));
+    }
+}
+
+static void SavedShortcutTarget(string directory)
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+    var source = Path.Combine(directory, "桌面快捷方式.lnk");
+    var target = Path.Combine(directory, "程序 文件.exe");
+    File.WriteAllBytes(target, []);
+    dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell", true)!)!;
+    try
+    {
+        dynamic shortcut = shell.CreateShortcut(source);
+        try
+        {
+            shortcut.TargetPath = target;
+            shortcut.Arguments = "--profile \"默认 配置\"";
+            shortcut.Save();
+        }
+        finally { Marshal.ReleaseComObject(shortcut); }
+    }
+    finally { Marshal.ReleaseComObject(shell); }
+
+    using (var repository = new LauncherRepository(directory))
+    {
+        var item = Item(repository.DefaultGroupId, "程序") with { Target = source, Kind = ShortcutSnapshot.Kind };
+        repository.SaveItem(item, ShortcutSnapshot.Read(source));
+    }
+    File.Delete(source);
+    using var reopened = new LauncherRepository(directory);
+    var cached = reopened.LaunchTarget(reopened.GetItems().Single());
+    Equal(target, ShellShortcut.GetFileSystemTarget(cached));
+    File.Delete(target);
+    Equal<string?>(null, ShellShortcut.GetFileSystemTarget(cached));
 }
 
 static void LegacyBackup(string directory)

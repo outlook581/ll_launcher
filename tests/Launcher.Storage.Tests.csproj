@@ -9,5 +9,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15" />
     <Compile Include="../ll_launcher/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
     <Compile Include="../ll_launcher/Data/*.cs" Link="Data/%(Filename)%(Extension)" />
+    <Compile Include="../ll_launcher/Native/ShellShortcut.cs" Link="Native/ShellShortcut.cs" />
   </ItemGroup>
 </Project>
