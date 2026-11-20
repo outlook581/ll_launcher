@@ -15,6 +15,10 @@
       <Setter Property="Height" Value="30" />
       <Setter Property="Padding" Value="5" />
     </Style>
+    <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+    </Style>
     <Style x:Key="CardButton" TargetType="Button" BasedOn="{StaticResource SoftButton}">
       <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
       <Setter Property="Padding" Value="5" />
@@ -146,16 +150,16 @@
           </StackPanel>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="PinButton" Style="{StaticResource IconButton}" Click="Pin_Click" ToolTip="固定位置并保持展开">
+          <Button x:Name="PinButton" Style="{StaticResource TitleBarButton}" Click="Pin_Click" ToolTip="固定位置并保持展开">
             <Path x:Name="PinGlyph" Data="{StaticResource Icon.pin}" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
           </Button>
-          <Button x:Name="MoreButton" Style="{StaticResource IconButton}" Click="More_Click" ToolTip="更多操作" AutomationProperties.Name="更多操作">
+          <Button x:Name="MoreButton" Style="{StaticResource TitleBarButton}" Click="More_Click" ToolTip="更多操作" AutomationProperties.Name="更多操作">
             <Path Data="{StaticResource Icon.more}" Fill="{DynamicResource TextBrush}" Stretch="Uniform" />
           </Button>
-          <Button Style="{StaticResource IconButton}" Click="Minimize_Click" ToolTip="最小化">
+          <Button Style="{StaticResource TitleBarButton}" Click="Minimize_Click" ToolTip="最小化">
             <Path Data="{StaticResource Icon.minimize}" Fill="{DynamicResource TextBrush}" Stretch="Uniform" />
           </Button>
-          <Button Style="{StaticResource IconButton}" Click="Close_Click" ToolTip="隐藏到托盘">
+          <Button Style="{StaticResource TitleBarButton}" Click="Close_Click" ToolTip="隐藏到托盘">
             <Path Data="{StaticResource Icon.close}" Fill="{DynamicResource TextBrush}" Stretch="Uniform" />
           </Button>
         </StackPanel>

@@ -57,6 +57,7 @@ public sealed class DesktopIntegration : IDisposable
             if (value)
             {
                 _hideTimer.Stop();
+                _window.Topmost = false;
                 if (_tab?.IsVisible == true) Reveal(false);
             }
             else ScheduleHide();
@@ -239,24 +240,31 @@ public sealed class DesktopIntegration : IDisposable
         if (_disposed) return;
         _hideTimer.Stop();
         _revealTimer.Stop();
+        bool revealingFromEdge = _edgeHidden && !IsPinned;
         _edgeHidden = false;
         _tab?.Hide();
         bool oldShowActivated = _window.ShowActivated;
         try
         {
-            _window.ShowActivated = activate;
+            _window.ShowActivated = activate && !revealingFromEdge;
             if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
             if (!_window.IsVisible) _window.Show();
         }
         finally { _window.ShowActivated = oldShowActivated; }
         ReconcileDisplay();
+        if (revealingFromEdge)
+        {
+            // Raise after Show() so the panel takes the edge tab's place above fullscreen windows.
+            _window.Topmost = true;
+            // The pointer can leave before the newly shown window receives its first mouse event.
+            if (!activate) ScheduleHide();
+        }
         if (activate) _window.Activate();
-        else DesktopNative.SetWindowPos(_handle, IntPtr.Zero, 0, 0, 0, 0,
-            DesktopNative.SwpNoActivate | DesktopNative.SwpNoSize | 0x0002); // SWP_NOMOVE
     }
 
     private void WindowStateChanged(object? sender, EventArgs e)
     {
+        if (_window.WindowState == WindowState.Minimized) _window.Topmost = false;
         if (_window.WindowState == WindowState.Maximized) _window.WindowState = WindowState.Normal;
         if (_window.WindowState == WindowState.Normal) QueueLayout();
     }
@@ -274,6 +282,7 @@ public sealed class DesktopIntegration : IDisposable
         else
         {
             _hideTimer.Stop();
+            _window.Topmost = false;
             if (_edgeHidden && _dockEdge.Length != 0) ShowTab();
         }
     }
@@ -427,7 +436,11 @@ public sealed class DesktopIntegration : IDisposable
     {
         if (_dockEdge == edge) return;
         _dockEdge = edge;
-        if (edge.Length == 0) _tab?.Hide();
+        if (edge.Length == 0)
+        {
+            _window.Topmost = false;
+            _tab?.Hide();
+        }
         StateChanged?.Invoke();
     }
 
