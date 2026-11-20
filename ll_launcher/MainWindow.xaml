@@ -176,18 +176,23 @@
             <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent" Padding="0" VerticalContentAlignment="Center" TextChanged="Search_Changed" AutomationProperties.Name="搜索应用、文件或网址" />
             <TextBlock x:Name="SearchHint" Text="搜索应用、文件或网址…" Foreground="{DynamicResource MutedBrush}" IsHitTestVisible="False" VerticalAlignment="Center" />
           </Grid>
-          <Border Grid.Column="2" Background="{DynamicResource RaisedBrush}" CornerRadius="4" Margin="5" Padding="5,1" ToolTip="回车打开第一项">
-            <Border.Style>
-              <Style TargetType="Border">
+          <StackPanel Grid.Column="2" Orientation="Horizontal">
+            <StackPanel.Style>
+              <Style TargetType="StackPanel">
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
                     <Setter Property="Visibility" Value="Collapsed" />
                   </DataTrigger>
                 </Style.Triggers>
               </Style>
-            </Border.Style>
-            <TextBlock Text="↵ 打开" FontSize="10" VerticalAlignment="Center" />
-          </Border>
+            </StackPanel.Style>
+            <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Margin="5" Padding="5,1" ToolTip="回车打开第一项">
+              <TextBlock Text="↵ 打开" FontSize="10" VerticalAlignment="Center" />
+            </Border>
+            <Button Style="{StaticResource IconButton}" Width="24" Height="24" Margin="0,0,3,0" Click="ClearSearch_Click" ToolTip="清空搜索" AutomationProperties.Name="清空搜索">
+              <Path Data="{StaticResource Icon.close}" Fill="{DynamicResource MutedBrush}" Width="12" Height="12" Stretch="Uniform" />
+            </Button>
+          </StackPanel>
         </Grid>
       </Border>
       <Grid Grid.Row="2">

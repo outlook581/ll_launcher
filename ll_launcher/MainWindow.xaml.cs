@@ -14,7 +14,8 @@ using ll_launcher.Services;
 namespace ll_launcher;
 public partial class MainWindow : Window
 {
-    public static string DisplayVersion => $"v{typeof(MainWindow).Assembly.GetName().Version!.ToString(3)}";
+    private static readonly Version CurrentVersion = Version.Parse(typeof(MainWindow).Assembly.GetName().Version!.ToString(3));
+    public static string DisplayVersion => $"v{CurrentVersion}";
 
     private readonly LauncherRepository _repo;
     private readonly SkinCatalog _skins;
@@ -23,6 +24,7 @@ public partial class MainWindow : Window
     private List<ItemView> _items = [];
     private long _selectedGroup;
     private bool _collapsed, _listMode, _ready, _allowClose;
+    private bool _checkingForUpdates;
     private readonly DispatcherTimer _saveTimer = new()
     {
         Interval = TimeSpan.FromMilliseconds(700)
@@ -197,6 +199,12 @@ public partial class MainWindow : Window
             return;
         _searchTimer.Stop();
         _searchTimer.Start();
+    }
+
+    private void ClearSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Clear();
+        SearchBox.Focus();
     }
 
     private void Content_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -576,8 +584,49 @@ public partial class MainWindow : Window
             QueueSave();
         });
         menu.Items.Add(new Separator());
+        AddMenu(menu, _checkingForUpdates ? "正在检查更新…" : "检查更新…",
+            async () => await CheckForUpdatesAsync(), !_checkingForUpdates);
         AddMenu(menu, "退出栖点", Exit);
         OpenMenu(menu, (FrameworkElement)sender);
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_checkingForUpdates) return;
+        _checkingForUpdates = true;
+        StatusText.Text = "正在检查更新…";
+        try
+        {
+            var release = await UpdateService.GetLatestAsync();
+            if (_allowClose) return;
+            if (release.Version <= CurrentVersion)
+            {
+                StatusText.Text = $"当前版本 {DisplayVersion}，没有可用更新。";
+                return;
+            }
+
+            StatusText.Text = $"发现新版 v{release.Version}，当前版本 {DisplayVersion}。";
+            if (!IsVisible || !IsEnabled || WindowState == WindowState.Minimized) return;
+            if (_desktop != null) _desktop.IsInteractionActive = true;
+            try
+            {
+                if (MessageBox.Show(this, StatusText.Text + "\n是否打开新版发布页？", "检查更新",
+                    MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                    Guard(() => ShellService.Launch(release.PageUrl));
+            }
+            finally
+            {
+                if (_desktop != null) _desktop.IsInteractionActive = false;
+            }
+        }
+        catch (InvalidDataException error)
+        {
+            StatusText.Text = "暂时无法检查更新，请稍后再试。" + error.Message;
+        }
+        finally
+        {
+            _checkingForUpdates = false;
+        }
     }
 
     private static void AddMenu(ContextMenu menu, string title, Action action, bool enabled = true)
